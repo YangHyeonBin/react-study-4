@@ -1,29 +1,30 @@
-import React, { useState, useEffect, useReducer, useContext } from 'react';
+import React, { useState, useEffect, useReducer, useContext, useRef } from 'react';
 
 import Card from '../UI/Card/Card';
 import classes from './Login.module.css';
 import Button from '../UI/Button/Button';
 import AuthContext from '../../store/auth-context';
+import Input from '../UI/Input/Input';
 
 const emailReducer = (state, action) => {
   if (action.type === 'USER_INPUT') {
-    return ({ value: action.val, isValid: action.val.includes('@') }) // state 아니고 action...
+    return { value: action.val, isValid: action.val.includes('@') }; // state 아니고 action...
   } // action의 type이 'USER_INPUT'일 때만 이 코드 실행
   if (action.type === 'INPUT_BLUR') {
-    return ({ value: state.value, isValid: state.value.includes('@') }) // 얘는 최신의 state...
+    return { value: state.value, isValid: state.value.includes('@') }; // 얘는 최신의 state...
   }
-  return ({ value: '', isValid: false }) // 위에 적은 action에 해당하지 않는 경우 이 코드 실행
+  return { value: '', isValid: false }; // 위에 적은 action에 해당하지 않는 경우 이 코드 실행
 };
 
 const passwordReducer = (state, action) => {
   if (action.type === 'USER_INPUT') {
-    return ({ value: action.val, isValid: action.val.trim().length > 6 })
+    return { value: action.val, isValid: action.val.trim().length > 6 };
   }
   if (action.type === 'INPUT_BLUR') {
-    return ({ value: state.value, isValid: state.value.trim().length > 6 })
+    return { value: state.value, isValid: state.value.trim().length > 6 };
   }
-  return ({ value: '', isValid: false })
-}
+  return { value: '', isValid: false };
+};
 
 const Login = () => {
   // const [enteredEmail, setEnteredEmail] = useState('');
@@ -47,12 +48,13 @@ const Login = () => {
   const { isValid: emailIsValid } = emailState; // 객체 destructuring 구문 이용 // emailState 객체의 key 중 하나인 isValid를 emailIsValid란 이름으로 빼내 쓰겠다.
   const { isValid: passwordIsValid } = passwordState;
 
+  const emailInputRef = useRef();
+  const passwordInputRef = useRef();
+
   useEffect(() => {
     const identifier = setTimeout(() => {
-      console.log('Checking form validity!') // 순서 확인 위해
-      setFormIsValid(
-        emailIsValid && passwordIsValid
-      ); // 로그인 버튼 활성화를 위한 유효성 검사 // emailState.isValid -> emailIsValid: emailState의 (유효성이 이미 확인된 이후여서) isValid 값은 그대로고 emailState의 value 값만 변해(=사용자의 추가 입력 때문)도 useEffect가 계속 다시 실행되던 것에서, emailState의 isValid(=emailIsValid) 값이 변할 때만 useEffect가 실행되는 것으로 바꾸어, 유효성 확보된 후엔 사용자의 추가 입력으로 state의 value가 변화해도 useEffect 실행 X: 최적화, 불필요한 실행 막음
+      console.log('Checking form validity!'); // 순서 확인 위해
+      setFormIsValid(emailIsValid && passwordIsValid); // 로그인 버튼 활성화를 위한 유효성 검사 // emailState.isValid -> emailIsValid: emailState의 (유효성이 이미 확인된 이후여서) isValid 값은 그대로고 emailState의 value 값만 변해(=사용자의 추가 입력 때문)도 useEffect가 계속 다시 실행되던 것에서, emailState의 isValid(=emailIsValid) 값이 변할 때만 useEffect가 실행되는 것으로 바꾸어, 유효성 확보된 후엔 사용자의 추가 입력으로 state의 value가 변화해도 useEffect 실행 X: 최적화, 불필요한 실행 막음
     }, 500);
 
     return () => {
@@ -86,47 +88,45 @@ const Login = () => {
 
   const validatePasswordHandler = () => {
     // setPasswordIsValid(passwordState.isValid);
-    dispatchPassword({ type: 'INPUT_BLUR' })
+    dispatchPassword({ type: 'INPUT_BLUR' });
   };
 
   const submitHandler = (event) => {
     event.preventDefault();
-    ctx.onLogin(emailState.value, passwordState.value);
+    if (formIsValid) {
+      ctx.onLogin(emailState.value, passwordState.value);
+    } else if (!emailIsValid) {
+      emailInputRef.current.focus();
+    } else {
+      passwordInputRef.current.focus();
+    }
   };
 
   return (
     <Card className={classes.login}>
       <form onSubmit={submitHandler}>
-        <div
-          className={`${classes.control} ${
-            emailState.isValid === false ? classes.invalid : ''
-          }`}
-        >
-          <label htmlFor="email">E-Mail</label>
-          <input
-            type="email"
-            id="email"
-            value={emailState.value}
-            onChange={emailChangeHandler}
-            onBlur={validateEmailHandler}
-          />
-        </div>
-        <div
-          className={`${classes.control} ${
-            passwordState.isValid === false ? classes.invalid : ''
-          }`}
-        >
-          <label htmlFor="password">Password</label>
-          <input
-            type="password"
-            id="password"
-            value={passwordState.value}
-            onChange={passwordChangeHandler}
-            onBlur={validatePasswordHandler}
-          />
-        </div>
+        <Input
+          ref={emailInputRef}
+          id="email"
+          label="E-mail"
+          type="email"
+          isValid={emailIsValid}
+          value={emailState.value}
+          onChange={emailChangeHandler}
+          onBlur={validateEmailHandler}
+        />
+        <Input
+          ref={passwordInputRef}
+          id="password"
+          label="Password"
+          type="password"
+          isValid={passwordIsValid}
+          value={passwordState.value}
+          onChange={passwordChangeHandler}
+          onBlur={validatePasswordHandler}
+        />
         <div className={classes.actions}>
-          <Button type="submit" className={classes.btn} disabled={!formIsValid}>
+          <Button type="submit" className={classes.btn}>
             Login
           </Button>
         </div>
